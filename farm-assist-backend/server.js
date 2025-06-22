@@ -3,13 +3,13 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-require('dotenv').config();
+require('dotenv').config(); // Load environment variables from .env
 
 const app = express();
 
 app.use(express.json());
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: 'http://localhost:3000', // You can update this to your frontend URL on Vercel
   credentials: true
 }));
 
@@ -26,8 +26,12 @@ if (!fs.existsSync(pestAlertsDir)) {
 // Serve static files (uploaded images)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-mongoose.connect('mongodb://localhost:27017/farm-assist')
-  .then(() => console.log('Connected to MongoDB'))
+// ✅ Updated to use MongoDB Atlas URI from .env
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+  .then(() => console.log('Connected to MongoDB Atlas'))
   .catch(err => console.error('MongoDB error:', err));
 
 // Add routes
@@ -57,21 +61,19 @@ app.get('/test', (req, res) => {
 // Error handling middleware
 app.use((error, req, res, next) => {
   console.error('Global error handler:', error);
-  
-  if (error instanceof multer.MulterError) {
-    if (error.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ message: 'File too large. Maximum size is 5MB.' });
-    }
+
+  if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({ message: 'File too large. Maximum size is 5MB.' });
   }
-  
+
   if (error.message === 'Only image files are allowed!') {
     return res.status(400).json({ message: 'Only image files are allowed!' });
   }
-  
+
   res.status(500).json({ message: 'Something went wrong!' });
 });
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
